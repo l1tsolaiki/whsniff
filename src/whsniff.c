@@ -2,8 +2,8 @@
 * Copyright (c) 2015-2020 Vladimir Alemasov
 * All rights reserved
 *
-* This program and the accompanying materials are distributed under 
-* the terms of GNU General Public License version 2 
+* This program and the accompanying materials are distributed under
+* the terms of GNU General Public License version 2
 * as published by the Free Software Foundation.
 *
 * This program is distributed in the hope that it will be useful,
@@ -94,13 +94,23 @@ static const pcap_hdr_t pcap_hdr = {
 
 static volatile unsigned int signal_exit = 0;
 
+FILE* log_file = NULL;
+#define LOG(...) 							\
+	do {									\
+		if (log_file != NULL) { 			\
+			fprintf(log_file, __VA_ARGS__); \
+			fprintf(log_file, "\n"); 		\
+			fflush(log_file); 				\
+		} 									\
+	} while (0) 							\
+
 //--------------------------------------------
 static uint16_t update_crc_ccitt(uint16_t crc, uint8_t c);
 static uint16_t ieee802154_crc16(uint8_t *tvb, uint32_t offset, uint32_t len);
 
 
 //--------------------------------------------
-static int packet_handler(unsigned char *buf, int cnt)
+static int packet_handler(unsigned char *buf, int cnt, FILE* output)
 {
 	usb_header_type *usb_header;
 	usb_data_header_type *usb_data_header;
@@ -161,8 +171,9 @@ static int packet_handler(unsigned char *buf, int cnt)
 			pcaprec_hdr.incl_len = (uint32_t)usb_data_header->wpan_len;
 			pcaprec_hdr.orig_len = (uint32_t)usb_data_header->wpan_len;
 
-			fwrite(&pcaprec_hdr, sizeof(pcaprec_hdr), 1, stdout);
-			fwrite(&buf[sizeof(usb_data_header_type)], 1, usb_data_header->wpan_len - 2, stdout);
+			fwrite(&pcaprec_hdr, sizeof(pcaprec_hdr), 1, output);
+			fwrite(&buf[sizeof(usb_data_header_type)], 1, usb_data_header->wpan_len - 2, output);
+			LOG("Wrote something to pipe");
 
 			// SmartRF™ Packet Sniffer User’s Manual (SWRU187G)
 			// FCS:
@@ -180,8 +191,8 @@ static int packet_handler(unsigned char *buf, int cnt)
 			}
 			le_fcs = htole16(fcs);
 
-			fwrite(&le_fcs, sizeof(le_fcs), 1, stdout);
-			fflush(stdout);
+			fwrite(&le_fcs, sizeof(le_fcs), 1, output);
+			fflush(output);
 
 			break;
 
@@ -196,7 +207,7 @@ static int packet_handler(unsigned char *buf, int cnt)
 		default:
 			break;
 	}
-		
+
 	return usb_len + sizeof(usb_header_type);
 }
 
@@ -209,16 +220,22 @@ void signal_handler(int sig)
 //--------------------------------------------
 void print_usage()
 {
-    printf("Usage: whsniff -c channel\n");
+    printf("Usage: whsniff -c channel -p pipe (- for stdout)\n");
 }
 
 //--------------------------------------------
 int main(int argc, char *argv[])
 {
+	// log_file = fopen("logfile.log", "w");
+	if (log_file == NULL) {
+		exit(1);
+	}
 	int res;
 	libusb_device_handle *handle;
 	libusb_device *dev;
 	uint8_t channel;
+	const int output_file_path_len = 255;
+	char output_file_path[output_file_path_len];
 	int option;
 	static unsigned char usb_buf[BUF_SIZE];
 	static int usb_cnt;
@@ -232,14 +249,14 @@ int main(int argc, char *argv[])
 	// pipe closed
 	signal(SIGPIPE, signal_handler);
 
-	if (argc != 3)
+	if (argc != 5)
 	{
 		print_usage();
 		exit(EXIT_FAILURE);
 	}
 
 	option = 0;
-	while ((option = getopt(argc, argv, "c:")) != -1)
+	while ((option = getopt(argc, argv, "c:p:")) != -1)
 	{
 		switch (option)
 		{
@@ -251,11 +268,16 @@ int main(int argc, char *argv[])
 					exit(EXIT_FAILURE);
 				}
 				break;
+			case 'p':
+				strncpy(output_file_path, optarg, output_file_path_len - 1);
+				output_file_path[output_file_path_len - 1] = '\0';
+				break;
 			default:
 				print_usage();
 				exit(EXIT_FAILURE);
 		}
 	}
+	LOG("Parsed args");
 
 	res = libusb_init(NULL);
 	if (res < 0)
@@ -326,6 +348,7 @@ int main(int argc, char *argv[])
 		printf("ERROR: No working device found.\n");
 		exit(EXIT_FAILURE);
 	}
+	LOG("Found device");
 
 
 	// get identity from firmware command
@@ -352,11 +375,23 @@ int main(int argc, char *argv[])
 	// start sniffing
 	res = libusb_control_transfer(handle, 0x40, 208, 0, 0, NULL, 0, TIMEOUT);
 
-	fwrite(&pcap_hdr, sizeof(pcap_hdr), 1, stdout);
-	fflush(stdout);
+	FILE* output = stdout;
+	if (strcmp("-", output_file_path) != 0) {
+		output = fopen(output_file_path, "w");
+		if (output == NULL) {
+			fprintf(stderr, "Error opening output file.\n");
+			exit(EXIT_FAILURE);
+		}
+	}
+
+	fwrite(&pcap_hdr, sizeof(pcap_hdr), 1, output);
+	fflush(output);
+
+	LOG("Wrote header");
 
 	while (!signal_exit)
 	{
+		LOG("In loop");
 		res = libusb_bulk_transfer(handle, 0x83, (unsigned char *)&usb_buf, BUF_SIZE, &usb_cnt, 10000);
 
 		if (usb_cnt + recv_cnt > 2 * BUF_SIZE)
@@ -379,7 +414,7 @@ int main(int argc, char *argv[])
 
 		for (;;)
 		{
-			res = packet_handler(&recv_buf[0], recv_cnt);
+			res = packet_handler(&recv_buf[0], recv_cnt, output);
 			if (res < 0)
 				break;
 			recv_cnt -= res;
@@ -491,7 +526,7 @@ static uint16_t update_crc_ccitt(uint16_t crc, uint8_t c)
 	tmp = (crc >> 8) ^ short_c;
 	crc = (crc << 8) ^ crc_tabccitt[tmp];
 	return crc;
-} 
+}
 
 //-------------------------------------------------------------------------
 // Computes the 16-bit CRC according to the CCITT/ITU-T Standard
