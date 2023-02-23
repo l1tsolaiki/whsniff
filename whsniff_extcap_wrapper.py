@@ -4,13 +4,18 @@ from __future__ import print_function
 
 import sys
 import argparse
-import struct
 import subprocess
-import time
-import traceback
-import os
-import fcntl
-import select
+
+import signal
+
+proc = None
+
+def signal_handler(signum, frame):
+    global proc
+    proc.terminate()
+    exit(1)
+
+signal.signal(signal.SIGTERM, signal_handler)
 
 # initialized = False
 channel = 15
@@ -54,7 +59,7 @@ this extcap plugin
 def extcap_config(interface, option):
     args = []
 
-    args.append((1, '--channel', 'Channel', 'Channel', 'unsigned', '{range=11,25}{default=15}'))
+    args.append((0, '--channel', 'Channel', 'Channel', 'unsigned', '{range=11,25}{required=true}'))
 
     if len(option) <= 0:
         for arg in args:
@@ -68,10 +73,10 @@ def extcap_version():
 def extcap_interfaces():
     print("extcap {version=1.0}{display=CC2531 sniffer}")
     print("interface {value=cc2531}{display=IEEE 802.15.4 capture}")
-    print("control {number=%d}{type=selector}{display=Channel}{tooltip=IEEE 802.15.4 channel}" % CTRL_ARG_CHANNEL)
+    # print("control {number=%d}{type=selector}{display=Channel}{tooltip=IEEE 802.15.4 channel}" % CTRL_ARG_CHANNEL)
 
-    for ch in range(11, 26):
-        print("value {control=%d}{value=%d}{display=%d}" % (CTRL_ARG_CHANNEL, ch, ch))
+    # for ch in range(11, 26):
+    #     print("value {control=%d}{value=%d}{display=%d}" % (CTRL_ARG_CHANNEL, ch, ch))
 
 
 def extcap_dlts(interface):
@@ -80,12 +85,12 @@ def extcap_dlts(interface):
 
 
 def extcap_capture(interface, fifo, in_channel):
-    global channel
+    global channel, proc
     channel = in_channel if in_channel in range(11, 26) else 15
 
     proc = subprocess.Popen([f'/usr/local/bin/whsniff -c {channel} -p {fifo}'], shell=True)
 
-    # proc.wait()
+    proc.wait()
 
 
 def extcap_close_fifo(fifo):
@@ -125,7 +130,7 @@ if __name__ == '__main__':
 
     # Interface Arguments
     parser.add_argument("--port", help="Port", nargs='?', default="")
-    parser.add_argument("--channel", help="Channel", type=int, default=15, choices=range(11, 26))
+    parser.add_argument("--channel", help="Channel", type=int, default=0, choices=range(11, 26))
 
     try:
         args, unknown = parser.parse_known_args()
