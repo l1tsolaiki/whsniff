@@ -32,4 +32,6 @@ Run `whsniff` directly like this:
 ```
 whsniff -c <channel> > output.pcap
 ```
+Output will be stored in `output.pcap`.
+
 Note: channel is a value between 11 and 25, default is 15.
