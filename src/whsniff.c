@@ -19,7 +19,7 @@
 #include <unistd.h>			/* getopt, optarg */
 #include <stdint.h>			/* uint8_t ... uint64_t */
 #include <time.h>			/* time */
-#include <libusb-1.0/libusb.h>
+#include <libusb.h>
 
 #ifndef _BSD_SOURCE
 #define _BSD_SOURCE

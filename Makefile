@@ -2,8 +2,8 @@
 # Copyright (c) 2015 Vladimir Alemasov
 # All rights reserved
 #
-# This program and the accompanying materials are distributed under 
-# the terms of GNU General Public License version 2 
+# This program and the accompanying materials are distributed under
+# the terms of GNU General Public License version 2
 # as published by the Free Software Foundation.
 #
 # This program is distributed in the hope that it will be useful,
@@ -20,13 +20,22 @@ HEADERS = $(wildcard $(SRCDIR)/*.h)
 OBJECTS = $(SOURCES:$(SRCDIR)/%.c=$(OBJDIR)/%.o)
 DEPS = $(HEADERS)
 
-INCLPATH = -I.
-LIBS = -lusb-1.0
-
 UNAME_S := $(shell uname -s)
 ifeq ($(UNAME_S),Linux)
     LIBS += -lrt
 endif
+
+LIBSUSB_EXISTS := $(shell pkg-config --exists libusb-1.0; echo $$?)
+ifneq ($(LIBSUSB_EXISTS),0)
+$(error Install libusb like this: brew install libusb)
+endif
+
+TSHARK_EXISTS := $(shell tshark -v > /dev/null 2>&1; echo $$?)
+ifneq ($(TSHARK_EXISTS),0)
+$(error Install wireshark like this: brew install wireshark)
+endif
+
+TSHARK_CONFIG := $(shell tshark -G folders | awk '$$1 == "Personal" && $$2 == "configuration:" {print $$3}')
 
 # Installation directories by convention
 # http://www.gnu.org/prep/standards/html_node/Directory-Variables.html
@@ -36,16 +45,19 @@ BINDIR = $(EXEC_PREFIX)/bin
 SYSCONFDIR = $(PREFIX)/etc
 LOCALSTATEDIR = $(PREFIX)/var
 
+PKG_LDFLAGS = $(shell pkg-config --libs libusb-1.0)
+PKG_CFLAGS = $(shell pkg-config --cflags --libs libusb-1.0)
+
 # main goal
 all: $(TARGET)
 
 # target executable
 $(TARGET): $(OBJECTS)
-	$(CC) $(LDFLAGS) -o $(TARGET) $(OBJECTS) $(LIBPATH) $(LIBS)
+	$(CC) $(LDFLAGS) $(PKG_LDFLAGS) -o $(TARGET) $(OBJECTS)
 
 # object files
 $(OBJECTS): $(OBJDIR)/%.o : $(SRCDIR)/%.c $(DEPS) | $(OBJDIR)
-	$(CC) $(CFLAGS) -c $< -o $@ $(INCLPATH)
+	$(CC) $(CFLAGS) $(PKG_CFLAGS) -c $< -o $@
 
 # create object files directory
 $(OBJDIR):
@@ -58,6 +70,10 @@ clean:
 # distclean
 distclean: clean
 	rm -f $(TARGET)
+
+install-extacp:
+	chmod +x ./whsniff_extcap_wrapper.py
+	cp ./whsniff_extcap_wrapper.py $(TSHARK_CONFIG)/extcap/
 
 # install
 # http://unixhelp.ed.ac.uk/CGI/man-cgi?install
