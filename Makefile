@@ -25,6 +25,10 @@ ifeq ($(UNAME_S),Linux)
     LIBS += -lrt
 endif
 
+PKGCONFIG_EXISTS := $(shell pkg-config --version; echo $$?)
+ifneq ($(PKGCONFIG_EXISTS),0)
+$(error Install pkg-config like this: brew install pkg-config)
+
 LIBSUSB_EXISTS := $(shell pkg-config --exists libusb-1.0; echo $$?)
 ifneq ($(LIBSUSB_EXISTS),0)
 $(error Install libusb like this: brew install libusb)
