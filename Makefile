@@ -25,16 +25,17 @@ ifeq ($(UNAME_S),Linux)
     LIBS += -lrt
 endif
 
-PKGCONFIG_EXISTS := $(shell pkg-config --version; echo $$?)
+PKGCONFIG_EXISTS := $(shell command -v pkg-config > /dev/null 2>&1; echo $$?)
 ifneq ($(PKGCONFIG_EXISTS),0)
 $(error Install pkg-config like this: brew install pkg-config)
+endif
 
 LIBSUSB_EXISTS := $(shell pkg-config --exists libusb-1.0; echo $$?)
 ifneq ($(LIBSUSB_EXISTS),0)
 $(error Install libusb like this: brew install libusb)
 endif
 
-TSHARK_EXISTS := $(shell tshark -v > /dev/null 2>&1; echo $$?)
+TSHARK_EXISTS := $(shell command -v tshark > /dev/null 2>&1; echo $$?)
 ifneq ($(TSHARK_EXISTS),0)
 $(error Install wireshark like this: brew install wireshark)
 endif
