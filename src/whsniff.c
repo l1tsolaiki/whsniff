@@ -183,18 +183,13 @@ static int packet_handler(unsigned char *buf, int cnt, FILE* output)
 			// Bit 6-0: If Correlation used: Correlation value.
 			// If Correlation not used: LQI.
 
-			if (keep_original_fcs)
-				fwrite(&buf[sizeof(usb_data_header_type)], 1, usb_data_header->wpan_len, file);
-			else
+			fcs = 0;
+			if (buf[sizeof(usb_data_header_type) + usb_data_header->wpan_len - 1] & 0x80)
 			{
-				fwrite(&buf[sizeof(usb_data_header_type)], 1, usb_data_header->wpan_len - 2, file);
-				fcs = 0;
-				if (buf[sizeof(usb_data_header_type) + usb_data_header->wpan_len - 1] & 0x80)
-				{
-					// CRC OK
-					fcs = ieee802154_crc16((uint8_t *)&buf[sizeof(usb_data_header_type)], 0, usb_data_header->wpan_len - 2);
-				}
-				le_fcs = htole16(fcs);
+				// CRC OK
+				fcs = ieee802154_crc16((uint8_t *)&buf[sizeof(usb_data_header_type)], 0, usb_data_header->wpan_len - 2);
+			}
+			le_fcs = htole16(fcs);
 
 			fwrite(&le_fcs, sizeof(le_fcs), 1, output);
 			fflush(output);
@@ -228,9 +223,8 @@ void print_usage()
     printf("Usage: whsniff -c channel -p pipe (- for stdout)\n");
 }
 
-
 //--------------------------------------------
-libusb_device_handle * init_usb_sniffer(uint8_t channel)
+int main(int argc, char *argv[])
 {
 	// log_file = fopen("logfile.log", "w");
 	if (log_file == NULL) {
@@ -289,14 +283,13 @@ libusb_device_handle * init_usb_sniffer(uint8_t channel)
 	if (res < 0)
 	{
 		printf("ERROR: Could not initialize libusb.\n");
-		return NULL;
+		exit(EXIT_FAILURE);
 	}
 #if LIBUSB_API_VERSION >= 0x01000106
 	libusb_set_option(NULL, LIBUSB_OPTION_LOG_LEVEL, 3);
 #else
 	libusb_set_debug(NULL, 3);
 #endif
-
 	// find first unused device
 	int found_device = 0;
 	libusb_device **list = NULL;
@@ -353,7 +346,7 @@ libusb_device_handle * init_usb_sniffer(uint8_t channel)
 	if(!found_device)
 	{
 		printf("ERROR: No working device found.\n");
-		return NULL;
+		exit(EXIT_FAILURE);
 	}
 	LOG("Found device");
 
@@ -431,9 +424,16 @@ libusb_device_handle * init_usb_sniffer(uint8_t channel)
 		}
 	}
 
-	close_usb_sniffer(handle);
-	if(file)
-		fclose(file);
+	// stop sniffing
+	res = libusb_control_transfer(handle, 0x40, 209, 0, 0, NULL, 0, TIMEOUT);
+	// power off radio, wIndex = 0
+	res = libusb_control_transfer(handle, 0x40, 197, 0, 0, NULL, 0, TIMEOUT);
+
+
+	// clearing
+	res = libusb_release_interface(handle, 0);
+	libusb_close(handle);
+	libusb_exit(NULL);
 
 	exit(EXIT_SUCCESS);
 }
