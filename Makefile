@@ -78,7 +78,7 @@ distclean: clean
 
 install-extcap:
 	chmod +x ./whsniff_extcap_wrapper.py
-	mkdir $(TSHARK_CONFIG)/extcap/
+	mkdir -p $(TSHARK_CONFIG)/extcap/
 	cp ./whsniff_extcap_wrapper.py $(TSHARK_CONFIG)/extcap/
 
 # install
