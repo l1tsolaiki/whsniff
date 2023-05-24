@@ -2,12 +2,18 @@
 
 **NOTE**: [Original readme](./original-readme.md)
 
-### Build
-- Install libusb
-    ```
-    brew install libusb
-    ```
+### Prequisites
+- pkg-config
+- libusb
+- wireshark
 
+#### Installation
+```
+brew install pkg-config libusb
+brew install --cask wireshark
+```
+
+### Build
 - Build binary
     ```
     make
@@ -25,7 +31,9 @@ Copy extcap wrapper to wireshark configuration folder:
 make install-extcap
 ```
 
-Open wireshark, choose `cc2531` interface, start capture.
+Open wireshark, choose `cc2531` interface, choose channel, start capture.
+
+Note: channel is a value between 11 and 25, default is 15.
 
 #### Option 2: capture to a file
 Run `whsniff` directly like this:
