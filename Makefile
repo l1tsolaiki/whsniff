@@ -71,7 +71,7 @@ clean:
 distclean: clean
 	rm -f $(TARGET)
 
-install-extacp:
+install-extcap:
 	chmod +x ./whsniff_extcap_wrapper.py
 	cp ./whsniff_extcap_wrapper.py $(TSHARK_CONFIG)/extcap/
 
