@@ -88,7 +88,7 @@ def extcap_capture(interface, fifo, in_channel):
     global channel, proc
     channel = in_channel if in_channel in range(11, 26) else 15
 
-    proc = subprocess.Popen([f'/usr/local/bin/whsniff -c {channel} -p {fifo}'], shell=True)
+    proc = subprocess.Popen([f'whsniff -c {channel} -p {fifo}'], shell=True)
 
     proc.wait()
 
