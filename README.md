@@ -29,6 +29,12 @@ brew install --cask wireshark
     ```
 
 ### Usage
+
+To decrypt the traffic you need to add Trust Center link key to Wireshark.
+
+From [zigbee2mqtt](https://www.zigbee2mqtt.io/advanced/zigbee/04_sniff_zigbee_traffic.html#_3-sniffing-traffic):
+> Add the Trust Center link key by going to to Edit -> Preferences -> Protocols -> ZigBee. Set Security Level to AES-128 Encryption, 32-bit Integrity Protection and click on Edit. Click on + and add `5A:69:67:42:65:65:41:6C:6C:69:61:6E:63:65:30:39` with Byte Order Normal.
+
 #### Option 1: interactive
 Copy extcap wrapper to wireshark configuration folder:
 ```
