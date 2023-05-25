@@ -226,10 +226,6 @@ void print_usage()
 //--------------------------------------------
 int main(int argc, char *argv[])
 {
-	// log_file = fopen("logfile.log", "w");
-	if (log_file == NULL) {
-		exit(1);
-	}
 	int res;
 	libusb_device_handle *handle;
 	libusb_device *dev;
