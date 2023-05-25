@@ -14,6 +14,10 @@ brew install --cask wireshark
 ```
 
 ### Build
+- Clone repository
+    ```
+    git clone https://github.com/l1tsolaiki/whsniff.git && cd whsniff
+    ```
 - Build binary
     ```
     make
