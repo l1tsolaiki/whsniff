@@ -5,6 +5,7 @@ from __future__ import print_function
 import sys
 import argparse
 import subprocess
+import os
 
 import signal
 
@@ -88,7 +89,11 @@ def extcap_capture(interface, fifo, in_channel):
     global channel, proc
     channel = in_channel if in_channel in range(11, 26) else 15
 
-    proc = subprocess.Popen([f'whsniff -c {channel} -p {fifo}'], shell=True)
+    # hack
+    env = os.environ
+    local_bin = '/usr/local/bin'
+    env['PATH'] = f"{env['PATH']}:{local_bin}"
+    proc = subprocess.Popen([f'whsniff -c {channel} -p {fifo}'], shell=True, env=env)
 
     proc.wait()
 
